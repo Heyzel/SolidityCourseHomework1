@@ -62,11 +62,11 @@ contract VotingApp is Ownable{
     using SafeMath for uint256;
 
     address _owner;
-    uint timestart;
-    uint currentCandidates;
-    mapping(address => User) users;
-    Candidate[] candidates;
-    string[] isPosition;
+    uint private timestart;
+    uint private currentCandidates;
+    mapping(address => User) private users;
+    Candidate[] private candidates;
+    string[] private isPosition;
     mapping(string => mapping(address => uint)) counters;
 
     function setPositions(string[] memory _positions) external onlyOwner() isNotVotingPeriod() {
@@ -85,7 +85,10 @@ contract VotingApp is Ownable{
     function postingCandidate(Candidate memory _candidate) internal onlyOwner() isNotVotingPeriod() {
         Candidate memory auxCandidate;
         for(uint i = 0; i < _candidate.postulatedPositions.length; i++){
-            require(contains(isPosition, _candidate.postulatedPositions[i]));
+            require(contains(isPosition, _candidate.postulatedPositions[i]), "The voting is not for all these positions");
+        }
+        for(uint i = 0; i < candidates.length; i++){
+            require(_candidate.addr != candidates[i].addr, "The candidate is already registered");
         }
         auxCandidate.name = _candidate.name;
         auxCandidate.addr = _candidate.addr;
@@ -160,5 +163,16 @@ contract VotingApp is Ownable{
         return counters[position][addr];
     }
 
+    function getTimestart() external view returns(uint){
+        return timestart;
+    }
+
+    function getCandidates() external view returns(Candidate[] memory){
+        return candidates;
+    }
+
+    function getIsPosition() external view returns(string[] memory){
+        return isPosition;
+    }
 }
 
