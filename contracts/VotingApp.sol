@@ -6,6 +6,31 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract VotingApp is Ownable{
 
+    event RegisteredSuccessfully(
+        address userAddress,
+        uint date
+    );
+
+    event PostCandidate(
+        string name,
+        address candidateAddress,
+        string[] positions,
+        uint date
+    );
+
+    event newVote(
+        address from,
+        address to,
+        string forPosition,
+        uint date
+    );
+
+    event startingVoting(
+        uint startTime,
+        uint endTime,
+        uint candidates
+    );
+
     struct User {
         bool isRegistered;
         bool alreadyVoted;
@@ -37,6 +62,7 @@ contract VotingApp is Ownable{
 
     address _owner;
     uint timestart;
+    uint currentCandidates;
     mapping(address => User) users;
     mapping(address => Candidate) candidates;
     mapping(string => bool) isPosition;
@@ -49,23 +75,34 @@ contract VotingApp is Ownable{
     }
 
     function setCandidate(Candidate[] memory _candidates) external onlyOwner() isNotVotingPeriod() {
-        Candidate storage _candidate;
+        require(_candidates.length.add(currentCandidates) <= 5, "There cannot be more than 5 candidates in total");
         for(uint i = 0; i < _candidates.length; i++){
-            _candidate = candidates[_candidates[i].addr];
-            _candidate.name = _candidates[i].name;
-            _candidate.addr = _candidates[i].addr;
-            _candidate.postulatedPositions = _candidates[i].postulatedPositions;
+            postingCandidate(_candidates[i]);
         }
-        
+    }
+
+    function postingCandidate(Candidate memory _candidate) internal onlyOwner() isNotVotingPeriod() {
+        Candidate storage auxCandidate;
+        for(uint i = 0; i < _candidate.postulatedPositions.length; i++){
+            require(isPosition[_candidate.postulatedPositions[i]]);
+        }
+        auxCandidate = candidates[_candidate.addr];
+        auxCandidate.name = _candidate.name;
+        auxCandidate.addr = _candidate.addr;
+        auxCandidate.postulatedPositions = _candidate.postulatedPositions;
+        currentCandidates = currentCandidates.add(1);
+        emit PostCandidate(auxCandidate.name, auxCandidate.addr, auxCandidate.postulatedPositions, block.timestamp);
     }
 
     function Register() external {
         require(!users[msg.sender].isRegistered, "You're already registered.");
         users[msg.sender].isRegistered = true;
+        emit RegisteredSuccessfully(msg.sender, block.timestamp);
     }
 
     function Voting(Vote[] memory _vote) external isVotingPeriod() {
         require(users[msg.sender].isRegistered, "You are not registered.");
+        require(!users[msg.sender].alreadyVoted, "You already vote.");
         for(uint i = 0; i < _vote.length; i++){
             RegisteringVote(_vote[i]);
         }
@@ -73,17 +110,19 @@ contract VotingApp is Ownable{
     }
 
     function RegisteringVote(Vote memory _vote) internal isVotingPeriod() {
-        require(candidates[_vote.addr].addr != address(0), "This address does not belong to any candidate");
-        require(contains(candidates[_vote.addr].postulatedPositions, _vote.position), "This candidate is not running for this position");
-        require(_vote.addr != msg.sender, "You can't vote for yourself");
-        require(!users[msg.sender].votedPositions[_vote.position], "You already vote for this position");
+        require(candidates[_vote.addr].addr != address(0), "This address does not belong to any candidate.");
+        require(contains(candidates[_vote.addr].postulatedPositions, _vote.position), "This candidate is not running for this position.");
+        require(_vote.addr != msg.sender, "You can't vote for yourself.");
+        require(!users[msg.sender].votedPositions[_vote.position], "You already vote for this position.");
         counters[_vote.position][_vote.addr] = counters[_vote.position][_vote.addr].add(1);
         users[msg.sender].votedPositions[_vote.position] = true;
+        emit newVote(msg.sender, _vote.addr, _vote.position, block.timestamp);
         
     }
 
     function startVoting() external onlyOwner() isNotVotingPeriod() {
         timestart = block.timestamp;
+        emit startingVoting(timestart, timestart.add(604800), currentCandidates);
     }
 
     function endVoting() external onlyOwner() isVotingPeriod() {
