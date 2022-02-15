@@ -46,6 +46,7 @@ contract VotingApp is Ownable{
     struct Vote {
         string position;
         address addr;
+        uint id;
     }
 
     modifier isVotingPeriod {
@@ -64,13 +65,13 @@ contract VotingApp is Ownable{
     uint timestart;
     uint currentCandidates;
     mapping(address => User) users;
-    mapping(address => Candidate) candidates;
-    mapping(string => bool) isPosition;
+    Candidate[] candidates;
+    string[] isPosition;
     mapping(string => mapping(address => uint)) counters;
 
     function setPositions(string[] memory _positions) external onlyOwner() isNotVotingPeriod() {
         for(uint i = 0; i < _positions.length; i++){
-            isPosition[_positions[i]] = true;
+            isPosition.push(_positions[i]);
         }
     }
 
@@ -82,21 +83,25 @@ contract VotingApp is Ownable{
     }
 
     function postingCandidate(Candidate memory _candidate) internal onlyOwner() isNotVotingPeriod() {
-        Candidate storage auxCandidate;
+        Candidate memory auxCandidate;
         for(uint i = 0; i < _candidate.postulatedPositions.length; i++){
-            require(isPosition[_candidate.postulatedPositions[i]]);
+            require(contains(isPosition, _candidate.postulatedPositions[i]));
         }
-        auxCandidate = candidates[_candidate.addr];
         auxCandidate.name = _candidate.name;
         auxCandidate.addr = _candidate.addr;
         auxCandidate.postulatedPositions = _candidate.postulatedPositions;
+        candidates.push(auxCandidate);
         currentCandidates = currentCandidates.add(1);
         emit PostCandidate(auxCandidate.name, auxCandidate.addr, auxCandidate.postulatedPositions, block.timestamp);
     }
 
-    function Register() external {
+    function Register() isNotVotingPeriod() external {
         require(!users[msg.sender].isRegistered, "You're already registered.");
         users[msg.sender].isRegistered = true;
+        users[msg.sender].alreadyVoted = false;
+        for(uint i = 0; i < isPosition.length; i++){
+            users[msg.sender].votedPositions[isPosition[i]] = false;
+        }
         emit RegisteredSuccessfully(msg.sender, block.timestamp);
     }
 
@@ -104,14 +109,14 @@ contract VotingApp is Ownable{
         require(users[msg.sender].isRegistered, "You are not registered.");
         require(!users[msg.sender].alreadyVoted, "You already vote.");
         for(uint i = 0; i < _vote.length; i++){
-            RegisteringVote(_vote[i]);
+            RegisteringVote(_vote[i], _vote[i].id);
         }
         users[msg.sender].alreadyVoted = true;
     }
 
-    function RegisteringVote(Vote memory _vote) internal isVotingPeriod() {
-        require(candidates[_vote.addr].addr != address(0), "This address does not belong to any candidate.");
-        require(contains(candidates[_vote.addr].postulatedPositions, _vote.position), "This candidate is not running for this position.");
+    function RegisteringVote(Vote memory _vote, uint index) internal isVotingPeriod() {
+        require(candidates[index].addr != address(0), "This address does not belong to any candidate.");
+        require(contains(candidates[index].postulatedPositions, _vote.position), "This candidate is not running for this position.");
         require(_vote.addr != msg.sender, "You can't vote for yourself.");
         require(!users[msg.sender].votedPositions[_vote.position], "You already vote for this position.");
         counters[_vote.position][_vote.addr] = counters[_vote.position][_vote.addr].add(1);
@@ -125,8 +130,20 @@ contract VotingApp is Ownable{
         emit startingVoting(timestart, timestart.add(604800), currentCandidates);
     }
 
-    function endVoting() external onlyOwner() isVotingPeriod() {
+    function resetVoting() internal isNotVotingPeriod() {
+        for(uint i = 0; i < isPosition.length; i++){
+            for(uint j = 0; j < candidates.length; j++){
+                counters[isPosition[i]][candidates[j].addr] = 0;
+            }
+        }
+        while(candidates.length > 0){
+            candidates.pop();
+        }
+        while(isPosition.length > 0){
+            isPosition.pop();
+        }
         timestart = 0;
+        currentCandidates = 0;
     }
 
     function contains(string[] memory arr, string memory str) internal pure returns(bool){
