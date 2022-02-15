@@ -34,7 +34,7 @@ contract VotingApp is Ownable{
     struct User {
         bool isRegistered;
         bool alreadyVoted;
-        mapping(string => bool) votedPositions;
+        string[] votedPositions;
     }
 
     struct Candidate {
@@ -99,9 +99,6 @@ contract VotingApp is Ownable{
         require(!users[msg.sender].isRegistered, "You're already registered.");
         users[msg.sender].isRegistered = true;
         users[msg.sender].alreadyVoted = false;
-        for(uint i = 0; i < isPosition.length; i++){
-            users[msg.sender].votedPositions[isPosition[i]] = false;
-        }
         emit RegisteredSuccessfully(msg.sender, block.timestamp);
     }
 
@@ -118,9 +115,9 @@ contract VotingApp is Ownable{
         require(candidates[index].addr != address(0), "This address does not belong to any candidate.");
         require(contains(candidates[index].postulatedPositions, _vote.position), "This candidate is not running for this position.");
         require(_vote.addr != msg.sender, "You can't vote for yourself.");
-        require(!users[msg.sender].votedPositions[_vote.position], "You already vote for this position.");
+        require(!contains(users[msg.sender].votedPositions, _vote.position), "You already vote for this position.");
         counters[_vote.position][_vote.addr] = counters[_vote.position][_vote.addr].add(1);
-        users[msg.sender].votedPositions[_vote.position] = true;
+        users[msg.sender].votedPositions.push(_vote.position);
         emit newVote(msg.sender, _vote.addr, _vote.position, block.timestamp);
         
     }
@@ -153,6 +150,14 @@ contract VotingApp is Ownable{
             }
         }
         return false;
+    }
+
+    function getUser(address addr) external view returns(User memory){
+        return users[addr];
+    }
+
+    function getCounter(string memory position, address addr) external view returns(uint){
+        return counters[position][addr];
     }
 
 }

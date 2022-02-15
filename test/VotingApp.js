@@ -15,5 +15,6 @@ describe('App contract', () => {
         });
     });
 
+    describe('')
 
 });
