@@ -46,7 +46,6 @@ contract VotingApp is Ownable{
     struct Vote {
         string position;
         address addr;
-        uint id;
     }
 
     modifier isVotingPeriod {
@@ -55,7 +54,7 @@ contract VotingApp is Ownable{
     }
 
     modifier isNotVotingPeriod {
-        require(timestart == 0 || block.timestamp > timestart.add(604800), "We're in voting period");
+        require(timestart == 0 || block.timestamp > timestart.add(604800), "We're in voting period.");
         _;
     }
 
@@ -76,7 +75,7 @@ contract VotingApp is Ownable{
     }
 
     function setCandidate(Candidate[] memory _candidates) external onlyOwner() isNotVotingPeriod() {
-        require(_candidates.length.add(currentCandidates) <= 5, "There cannot be more than 5 candidates in total");
+        require(_candidates.length.add(currentCandidates) <= 5, "There cannot be more than 5 candidates in total.");
         for(uint i = 0; i < _candidates.length; i++){
             postingCandidate(_candidates[i]);
         }
@@ -85,10 +84,10 @@ contract VotingApp is Ownable{
     function postingCandidate(Candidate memory _candidate) internal onlyOwner() isNotVotingPeriod() {
         Candidate memory auxCandidate;
         for(uint i = 0; i < _candidate.postulatedPositions.length; i++){
-            require(contains(isPosition, _candidate.postulatedPositions[i]), "The voting is not for all these positions");
+            require(contains(isPosition, _candidate.postulatedPositions[i]), "The voting is not for all these positions.");
         }
         for(uint i = 0; i < candidates.length; i++){
-            require(_candidate.addr != candidates[i].addr, "The candidate is already registered");
+            require(_candidate.addr != candidates[i].addr, "The candidate is already registered.");
         }
         auxCandidate.name = _candidate.name;
         auxCandidate.addr = _candidate.addr;
@@ -98,7 +97,7 @@ contract VotingApp is Ownable{
         emit PostCandidate(auxCandidate.name, auxCandidate.addr, auxCandidate.postulatedPositions, block.timestamp);
     }
 
-    function Register() isNotVotingPeriod() external {
+    function Register() external isNotVotingPeriod() {
         require(!users[msg.sender].isRegistered, "You're already registered.");
         users[msg.sender].isRegistered = true;
         users[msg.sender].alreadyVoted = false;
@@ -106,16 +105,18 @@ contract VotingApp is Ownable{
     }
 
     function Voting(Vote[] memory _vote) external isVotingPeriod() {
-        require(users[msg.sender].isRegistered, "You are not registered.");
         require(!users[msg.sender].alreadyVoted, "You already vote.");
+        require(users[msg.sender].isRegistered, "You are not registered.");
         for(uint i = 0; i < _vote.length; i++){
-            RegisteringVote(_vote[i], _vote[i].id);
+            RegisteringVote(_vote[i]);
         }
         users[msg.sender].alreadyVoted = true;
+        users[msg.sender].isRegistered = false;
     }
 
-    function RegisteringVote(Vote memory _vote, uint index) internal isVotingPeriod() {
-        require(candidates[index].addr != address(0), "This address does not belong to any candidate.");
+    function RegisteringVote(Vote memory _vote) internal isVotingPeriod() {
+        uint index = findCandidate(_vote.addr);
+        require(index == 6, "This address does not belong to any candidate.");
         require(contains(candidates[index].postulatedPositions, _vote.position), "This candidate is not running for this position.");
         require(_vote.addr != msg.sender, "You can't vote for yourself.");
         require(!contains(users[msg.sender].votedPositions, _vote.position), "You already vote for this position.");
@@ -130,7 +131,7 @@ contract VotingApp is Ownable{
         emit startingVoting(timestart, timestart.add(604800), currentCandidates);
     }
 
-    function resetVoting() internal isNotVotingPeriod() {
+    function resetVoting() external onlyOwner() isNotVotingPeriod() {
         for(uint i = 0; i < isPosition.length; i++){
             for(uint j = 0; j < candidates.length; j++){
                 counters[isPosition[i]][candidates[j].addr] = 0;
@@ -173,6 +174,15 @@ contract VotingApp is Ownable{
 
     function getIsPosition() external view returns(string[] memory){
         return isPosition;
+    }
+
+    function findCandidate(address addr) internal view returns(uint){
+        for(uint i = 0; i < candidates.length; i++){
+            if(candidates[i].addr == addr){
+                return i;
+            }
+        }
+        return 6;
     }
 }
 
