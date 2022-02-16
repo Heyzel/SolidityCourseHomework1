@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "hardhat/console.sol";
 
 contract VotingApp is Ownable{
 
@@ -11,21 +13,21 @@ contract VotingApp is Ownable{
         uint date
     );
 
-    event PostCandidate(
+    event NewCandidate(
         string name,
         address candidateAddress,
         string[] positions,
         uint date
     );
 
-    event newVote(
+    event NewVote(
         address from,
         address to,
         string forPosition,
         uint date
     );
 
-    event startingVoting(
+    event VotingStarted(
         uint startTime,
         uint endTime,
         uint candidates
@@ -93,8 +95,8 @@ contract VotingApp is Ownable{
         auxCandidate.addr = _candidate.addr;
         auxCandidate.postulatedPositions = _candidate.postulatedPositions;
         candidates.push(auxCandidate);
-        currentCandidates = currentCandidates.add(1);
-        emit PostCandidate(auxCandidate.name, auxCandidate.addr, auxCandidate.postulatedPositions, block.timestamp);
+        currentCandidates = candidates.length;
+        emit NewCandidate(auxCandidate.name, auxCandidate.addr, auxCandidate.postulatedPositions, block.timestamp);
     }
 
     function Register() external isNotVotingPeriod() {
@@ -112,26 +114,31 @@ contract VotingApp is Ownable{
         }
         users[msg.sender].alreadyVoted = true;
         users[msg.sender].isRegistered = false;
+        for(uint i = 0; i < users[msg.sender].votedPositions.length; i++){
+            users[msg.sender].votedPositions.pop();
+        }
     }
 
     function RegisteringVote(Vote memory _vote) internal isVotingPeriod() {
         uint index = findCandidate(_vote.addr);
-        require(index == 6, "This address does not belong to any candidate.");
+        require(index != 6, "This address does not belong to any candidate.");
         require(contains(candidates[index].postulatedPositions, _vote.position), "This candidate is not running for this position.");
         require(_vote.addr != msg.sender, "You can't vote for yourself.");
         require(!contains(users[msg.sender].votedPositions, _vote.position), "You already vote for this position.");
         counters[_vote.position][_vote.addr] = counters[_vote.position][_vote.addr].add(1);
         users[msg.sender].votedPositions.push(_vote.position);
-        emit newVote(msg.sender, _vote.addr, _vote.position, block.timestamp);
+        emit NewVote(msg.sender, _vote.addr, _vote.position, block.timestamp);
         
     }
 
     function startVoting() external onlyOwner() isNotVotingPeriod() {
+        require(currentCandidates != 0, "You cannot start voting without candidates");
         timestart = block.timestamp;
-        emit startingVoting(timestart, timestart.add(604800), currentCandidates);
+        emit VotingStarted(timestart, timestart.add(604800), currentCandidates);
     }
 
     function resetVoting() external onlyOwner() isNotVotingPeriod() {
+        require(timestart != 0, "Only can reset voting after a voting.");
         for(uint i = 0; i < isPosition.length; i++){
             for(uint j = 0; j < candidates.length; j++){
                 counters[isPosition[i]][candidates[j].addr] = 0;
@@ -177,12 +184,14 @@ contract VotingApp is Ownable{
     }
 
     function findCandidate(address addr) internal view returns(uint){
+        uint pos = 6;
         for(uint i = 0; i < candidates.length; i++){
             if(candidates[i].addr == addr){
-                return i;
+                pos = i;
+                return pos;
             }
         }
-        return 6;
+        return pos;
     }
 }
 
