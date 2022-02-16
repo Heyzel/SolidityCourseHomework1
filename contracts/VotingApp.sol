@@ -49,12 +49,12 @@ contract VotingApp is Ownable{
     }
 
     modifier isVotingPeriod {
-        require(block.timestamp >= timestart && block.timestamp <= timestart.add(604800), "We're not in voting period.");
+        require(block.timestamp >= timestart && block.timestamp <= timestart.add(604800), "We are not in voting period.");
         _;
     }
 
     modifier isNotVotingPeriod {
-        require(timestart == 0 || block.timestamp > timestart.add(604800), "We're in voting period.");
+        require(timestart == 0 || block.timestamp > timestart.add(604800), "We are in voting period.");
         _;
     }
 
@@ -98,7 +98,7 @@ contract VotingApp is Ownable{
     }
 
     function Register() external isNotVotingPeriod() {
-        require(!users[msg.sender].isRegistered, "You're already registered.");
+        require(!users[msg.sender].isRegistered, "You are already registered.");
         users[msg.sender].isRegistered = true;
         users[msg.sender].alreadyVoted = false;
         emit RegisteredSuccessfully(msg.sender, block.timestamp);

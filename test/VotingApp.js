@@ -15,6 +15,49 @@ describe('App contract', () => {
         });
     });
 
+    describe('Tests for modifiers', () => {
+
+        describe('OnlyOwner: should fail if a user try call it', () => {
+
+            it('for setPositions', async () => {
+                const positions = ['President, Mayor'];
+                await expect(app.connect(user).setPositions(positions)).to.be.revertedWith('Ownable: caller is not the owner');
+            });
+
+            it('for setCandidate', async () => {
+                const candidates = [{name:'Candidate 1', addr: cand1.address, postulatedPositions: ['President']}];
+                await expect(app.connect(user).setCandidate(candidates)).to.be.revertedWith('Ownable: caller is not the owner');
+            });
+
+            it('for startVoting', async () => {
+                await expect(app.connect(user).startVoting()).to.be.revertedWith('Ownable: caller is not the owner');
+            });
+        });
+
+        describe('isNotVotingPeriod: should fail if we are in voting period', () => {
+            
+            beforeEach(async () => {
+                await app.connect(owner).startVoting();
+            })
+
+            it('for setPositions', async () => {
+                const positions = ['President, Mayor'];
+                await expect(app.connect(owner).setPositions(positions)).to.be.revertedWith('We are in voting period.')
+            });
+
+            it('for setCandidate', async () => {
+                const candidates = [{name:'Candidate 1', addr: cand1.address, postulatedPositions: ['President']}];
+                await expect(app.connect(owner).setCandidate(candidates)).to.be.revertedWith('We are in voting period.');
+            });
+
+            it('for startVoting', async () => {
+                await expect(app.connect(owner).startVoting()).to.be.revertedWith("We are in voting period.");
+            });
+        });
+
+        
+    })
+
     describe('tests for setPositions', () => {
         it('Cannot be called by users', async () => {
             await expect(app.connect(user).setPositions(["President", "Mayor"])).to.be.revertedWith("Ownable: caller is not the owner");
@@ -67,7 +110,7 @@ describe('App contract', () => {
                 {name:'Candidate 2', addr: cand2.address, postulatedPositions: ['Mayor']},
                 {name:'Candidate 3', addr: cand3.address, postulatedPositions: ['Governer']}
             ];
-            await expect(app.connect(owner).setCandidate(candidates)).to.be.revertedWith('The voting is not for all these positions"')
+            await expect(app.connect(owner).setCandidate(candidates)).to.be.revertedWith('The voting is not for all these positions.')
         });
 
         it('Should fail if pass a candidate already registered', async () => {
@@ -86,11 +129,11 @@ describe('App contract', () => {
     describe('test for Register', () => {
         it('Should fail if try register and you are already registered', async () => {
             await app.connect(user).Register();
-            await expect(app.connect(user).Register()).to.be.revertedWith("You're already registered.");
+            await expect(app.connect(user).Register()).to.be.revertedWith("You are already registered.");
         });
     });
 
-    describe('test for Voting', () => {
+    /*describe('test for Voting', () => {
         it('Should fail if the user already vote', async () => {
             const positions = ["President"];
             await app.connect(owner).setPositions(positions);
@@ -110,6 +153,6 @@ describe('App contract', () => {
             const vote = [{position:'President', addr: cand1.address}];
             await expect(app.connect(user).Voting(vote)).to.be.revertedWith('You are not registered.');
         })
-    })
+    })*/
 
 });
