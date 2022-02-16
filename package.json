@@ -6,7 +6,9 @@
   "scripts": {
     "build": "hardhat compile",
     "test": "hardhat test",
-    "test:coverage": "hardhat coverage"
+    "test:coverage": "hardhat coverage",
+    "start:localblockchain": "hardhat run scripts/deploy.js",
+    "start:rinkeby": "hardhat run scripts/deploy.js --network rinkeby"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +23,7 @@
     "solidity-coverage": "^0.7.19"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.5.0"
+    "@openzeppelin/contracts": "^4.5.0",
+    "dotenv": "^16.0.0"
   }
 }
