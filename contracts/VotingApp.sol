@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.3;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract VotingApp is Ownable{
+contract VotingApp is OwnableUpgradeable{
 
     event RegisteredSuccessfully(
         address userAddress,
@@ -69,6 +69,10 @@ contract VotingApp is Ownable{
     Candidate[] private candidates;
     string[] private isPosition;
     mapping(string => mapping(address => uint)) counters;
+
+    function initialize() initializer public {
+        OwnableUpgradeable.__Ownable_init();
+    }
 
     function setPositions(string[] memory _positions) external onlyOwner() isNotVotingPeriod() {
         for(uint i = 0; i < _positions.length; i++){

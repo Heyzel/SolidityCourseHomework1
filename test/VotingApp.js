@@ -1,12 +1,12 @@
 const {expect} = require('chai');
-const { network, ethers } = require('hardhat');
+const { network, ethers, upgrades } = require('hardhat');
 
 describe('App contract', () => {
     let App, app, owner;
 
     beforeEach(async () => {
         App = await ethers.getContractFactory('VotingApp');
-        app = await App.deploy();
+        app = await upgrades.deployProxy(App);
         [owner, user, user2, cand1, cand2, cand3, cand4, cand5, cand6] = await ethers.getSigners();
     });
 
